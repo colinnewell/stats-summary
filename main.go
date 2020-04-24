@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 
 	"github.com/google/gopacket"
@@ -13,7 +14,6 @@ import (
 var counts map[string]int64
 
 func handlePacket(p gopacket.Packet) {
-
 	if appLayer := p.ApplicationLayer(); appLayer != nil {
 		payload := appLayer.Payload()
 		split := bytes.IndexByte(payload, byte(':'))
@@ -29,15 +29,24 @@ type statistic struct {
 }
 
 func main() {
+	files := os.Args[1:]
+
+	if len(files) == 0 {
+		log.Fatal("Must specify filename")
+	}
+
 	counts = make(map[string]int64)
-	if handle, err := pcap.OpenOffline("/tmp/monitor.pcap"); err != nil {
-		log.Fatal(err)
-	} else {
-		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-		for packet := range packetSource.Packets() {
-			handlePacket(packet) // Do something with a packet here.
+	for _, filename := range files {
+		if handle, err := pcap.OpenOffline(filename); err != nil {
+			log.Fatal(err)
+		} else {
+			packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+			for packet := range packetSource.Packets() {
+				handlePacket(packet)
+			}
 		}
 	}
+
 	stats := make([]statistic, len(counts))
 	i := 0
 	for k, v := range counts {
