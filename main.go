@@ -5,28 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
+
+	"github.com/colinnewell/stats-summary/stats"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
 )
-
-var counts map[string]int64
-
-func handlePacket(p gopacket.Packet) {
-	if appLayer := p.ApplicationLayer(); appLayer != nil {
-		payload := appLayer.Payload()
-		split := bytes.IndexByte(payload, byte(':'))
-		key := string(payload[0:split])
-		counts[key]++
-	}
-	return
-}
-
-type statistic struct {
-	key   string
-	count int64
-}
 
 func main() {
 	files := os.Args[1:]
@@ -35,27 +19,24 @@ func main() {
 		log.Fatal("Must specify filename")
 	}
 
-	counts = make(map[string]int64)
+	stats := stats.New(5000)
 	for _, filename := range files {
 		if handle, err := pcap.OpenOffline(filename); err != nil {
 			log.Fatal(err)
 		} else {
 			packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 			for packet := range packetSource.Packets() {
-				handlePacket(packet)
+				if appLayer := packet.ApplicationLayer(); appLayer != nil {
+					payload := appLayer.Payload()
+					split := bytes.IndexByte(payload, byte(':'))
+					key := string(payload[0:split])
+					stats.RecordStats(key)
+				}
 			}
 		}
 	}
 
-	stats := make([]statistic, len(counts))
-	i := 0
-	for k, v := range counts {
-		stats[i].key = k
-		stats[i].count = v
-		i++
-	}
-	sort.Slice(stats, func(i, j int) bool { return stats[i].count < stats[j].count })
-	for _, s := range stats {
-		fmt.Printf("%d: %s\n", s.count, s.key)
+	for _, s := range stats.Summary() {
+		fmt.Printf("%d: %s\n", s.Count, s.PartialName)
 	}
 }

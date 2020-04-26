@@ -10,11 +10,15 @@ type Stats struct {
 	Count       uint64
 }
 
+// StatsMap type providing general outline of where the statistics are
+// concentrated.
 type StatsMap struct {
 	Stats     map[string]*Stats
 	Threshold uint64
 }
 
+// New construct a new StatsMap, provide the threshold to descend into more
+// detail in the stats.
 func New(threshold uint64) StatsMap {
 	return StatsMap{Stats: make(map[string]*Stats), Threshold: threshold}
 }
@@ -27,6 +31,8 @@ func (m *StatsMap) RecordStats(stat string) {
 			part := strings.Join(parts[0:i], ".")
 			if m.incrementStat(part) {
 				incremented = true
+				// FIXME: we could probably do with tweaking
+				// the way we decide to descend
 				if m.Stats[part].Count >= m.Threshold {
 					part = strings.Join(parts[0:i+1], ".")
 					m.addStat(part)
@@ -54,6 +60,8 @@ func (m *StatsMap) addStat(stat string) {
 	m.Stats[stat] = &Stats{PartialName: stat, Count: 1}
 }
 
+// Summary return a slice of the stats sorted by count
+// Note that the results are not precise counts.
 func (m *StatsMap) Summary() []Stats {
 	// copy and sort
 	stats := make([]Stats, len(m.Stats))
