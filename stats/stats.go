@@ -64,10 +64,12 @@ func (m *StatsMap) addStat(stat string) {
 // Note that the results are not precise counts.
 func (m *StatsMap) Summary() []Stats {
 	// copy and sort
-	stats := make([]Stats, len(m.Stats))
+	stats := make([]Stats, 0)
 	i := 0
 	for _, v := range m.Stats {
-		stats[i] = *v
+		if v.Count >= m.Threshold {
+			stats = append(stats, *v)
+		}
 		i++
 	}
 	sort.Slice(stats, func(i, j int) bool { return stats[i].Count < stats[j].Count })
